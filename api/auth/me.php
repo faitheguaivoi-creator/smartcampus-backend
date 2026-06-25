@@ -52,17 +52,29 @@ if (!$user) {
 }
 
 // ── 5. Fetch basic stats ───────────────────────────
-$statsStmt = $db->prepare("
-    SELECT
-        COUNT(DISTINCT p.id)                        AS total_posts,
-        COALESCE(AVG(a.status = 'present') * 100, 0) AS attendance_percentage
-    FROM users u
-    LEFT JOIN posts       p ON p.user_id = u.id
-    LEFT JOIN attendance  a ON a.user_id = u.id
-    WHERE u.id = ?
-");
-$statsStmt->execute([$userId]);
-$stats = $statsStmt->fetch();
+$postStmt = $db->prepare("SELECT COUNT(*) AS cnt FROM posts WHERE user_id = ?");
+$postStmt->execute([$userId]);
+$totalPosts = (int) ($postStmt->fetch()['cnt'] ?? 0);
+
+$attendancePct = 0.0;
+if ($user['role'] === 'student') {
+    $attStmt = $db->prepare("
+        SELECT
+            COUNT(ats.id)          AS total_sessions,
+            SUM(CASE WHEN ar.status IN ('present','late') THEN 1 ELSE 0 END) AS attended
+        FROM course_enrollments ce
+        JOIN attendance_sessions ats ON ats.course_id = ce.course_id
+        LEFT JOIN attendance_records ar
+               ON ar.session_id = ats.id
+              AND ar.student_id = ce.student_id
+        WHERE ce.student_id = ?
+    ");
+    $attStmt->execute([$userId]);
+    $att = $attStmt->fetch();
+    $totalSessions = (int) ($att['total_sessions'] ?? 0);
+    $attended      = (int) ($att['attended'] ?? 0);
+    $attendancePct = $totalSessions > 0 ? round($attended / $totalSessions * 100, 1) : 0.0;
+}
 
 // ── 6. Return success response ────────────────────
 sendSuccess([
@@ -78,7 +90,7 @@ sendSuccess([
         'bio'            => $user['bio'],
     ],
     'stats' => [
-        'total_posts'            => (int) ($stats['total_posts'] ?? 0),
-        'attendance_percentage'  => round((float) ($stats['attendance_percentage'] ?? 0), 1),
+        'total_posts'            => $totalPosts,
+        'attendance_percentage'  => $attendancePct,
     ],
 ]);
