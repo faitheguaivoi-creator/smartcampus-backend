@@ -1,6 +1,6 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+error_reporting(0);
+ini_set('display_errors', 0);
 
 require_once __DIR__ . '/../../config/headers.php';
 require_once __DIR__ . '/../../config/database.php';
@@ -58,7 +58,7 @@ if ($stmt->fetch()) {
 
 // Mark as present
 $stmt = $db->prepare(
-    'INSERT INTO attendance_records (session_id, student_id, status) VALUES (?, ?, "present")'
+    "INSERT INTO attendance_records (session_id, student_id, status) VALUES (?, ?, 'present')"
 );
 $stmt->execute([$session['id'], $auth['user_id']]);   // FIXED: $auth['user_id']
 
