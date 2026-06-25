@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../config/headers.php';
+
 session_start();
 session_destroy();
 
