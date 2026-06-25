@@ -34,14 +34,28 @@ define('DB_NAME',    $dbName);
 define('DB_USER',    $dbUser);
 define('DB_PASS',    $dbPass);
 define('DB_CHARSET', 'utf8mb4');
+define('DB_SSL',     getenv('DB_SSL') === 'true');
 
 function getDB(): PDO {
     static $pdo = null;
     if ($pdo === null) {
         $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
         try {
-            $pdo = new PDO($dsn, DB_USER, DB_PASS);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ];
+
+            // Aiven (and most cloud DBs) require SSL
+            if (DB_SSL) {
+                $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+                // If a CA cert path is provided, use it
+                $caCert = getenv('DB_CA_CERT_PATH');
+                if ($caCert && file_exists($caCert)) {
+                    $options[PDO::MYSQL_ATTR_SSL_CA] = $caCert;
+                }
+            }
+
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
