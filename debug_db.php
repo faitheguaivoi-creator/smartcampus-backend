@@ -2,34 +2,49 @@
 // debug_db.php - temp script to debug the remote DB schema and connection
 header('Content-Type: application/json');
 require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/helpers/jwt.php';
 
 try {
     $db = getDB();
     
-    $tables = [];
-    $stmt = $db->query("SHOW TABLES");
-    while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
-        $tables[] = $row[0];
+    // Fetch users
+    $usersStmt = $db->query("SELECT id, name, email, role FROM users LIMIT 10");
+    $users = $usersStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch some attendance sessions
+    $sessionsStmt = $db->query("SELECT id, course_id, session_code, is_active FROM attendance_sessions LIMIT 5");
+    $sessions = $sessionsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch some enrollments
+    $enrollmentsStmt = $db->query("SELECT id, course_id, student_id FROM course_enrollments LIMIT 5");
+    $enrollments = $enrollmentsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Let's find a student to generate a token for
+    $student = null;
+    foreach ($users as $u) {
+        if ($u['role'] === 'student') {
+            $student = $u;
+            break;
+        }
     }
-    
-    $schema = [];
-    if (in_array('attendance_records', $tables)) {
-        $stmt = $db->query("DESCRIBE attendance_records");
-        $schema['attendance_records'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-    if (in_array('attendance_sessions', $tables)) {
-        $stmt = $db->query("DESCRIBE attendance_sessions");
-        $schema['attendance_sessions'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-    if (in_array('course_enrollments', $tables)) {
-        $stmt = $db->query("DESCRIBE course_enrollments");
-        $schema['course_enrollments'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $token = null;
+    if ($student) {
+        $token = generateJWT([
+            'user_id' => $student['id'],
+            'name'    => $student['name'],
+            'email'   => $student['email'],
+            'role'    => $student['role'],
+        ]);
     }
 
     echo json_encode([
         'success' => true,
-        'tables' => $tables,
-        'schema' => $schema,
+        'users' => $users,
+        'sessions' => $sessions,
+        'enrollments' => $enrollments,
+        'test_student' => $student,
+        'test_token' => $token,
     ], JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
