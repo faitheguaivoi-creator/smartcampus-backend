@@ -9,8 +9,13 @@
 // --------------------------------------------------
 
 function setCorsHeaders(): void {
-    // Allow requests from the React dev server
-    header("Access-Control-Allow-Origin: http://localhost:5173");
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    // Allow any origin dynamically to support both localhost and production Render domains.
+    if ($origin) {
+        header("Access-Control-Allow-Origin: $origin");
+    } else {
+        header("Access-Control-Allow-Origin: *");
+    }
 
     // Allow these HTTP methods
     header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");

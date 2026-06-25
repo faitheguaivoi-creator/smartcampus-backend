@@ -3,17 +3,11 @@
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-// Allow both Vite dev server and production origins.
-$allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost',
-];
-
-if (in_array($origin, $allowedOrigins, true)) {
+// Allow any origin dynamically to support both localhost and production Render domains.
+if ($origin) {
     header("Access-Control-Allow-Origin: $origin");
 } else {
-    header("Access-Control-Allow-Origin: http://localhost:5173");
+    header("Access-Control-Allow-Origin: *");
 }
 
 header('Vary: Origin');
